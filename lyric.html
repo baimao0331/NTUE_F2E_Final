@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>よいせい</title>
+    <link rel="shortcut icon" href="./images/ys.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100..900&family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="./CSS/common.css">
+    <link rel="stylesheet" href="./CSS/lyric.css">
+</head>
+
+<body>
+    <header>
+        <a href="index.html" class="logoimg"><img src="./images/logo.png" alt="logo"></a>
+        <nav>
+            <ul class="link">
+                <a href="index.html">
+                    <li class="link-item">
+                        首頁
+                    </li>
+                </a>
+                <a href="search.html">
+                    <li class="link-item">
+                        搜尋
+                    </li>
+                </a>
+                <a href="ranking.html">
+                    <li class="link-item">
+                        排行
+                    </li>
+                </a>
+            </ul>
+        </nav>
+        <div class="account">
+            <button id="account-btn">
+                <img src="./images/arrow.svg" alt="arrow" id="arrow">
+                <img src="./images/account.svg" alt="account" id="account-head">
+            </button>
+            <ul id="account_option"></ul></ul>
+        </div>
+        <div class="hamburger-menu" id="hamburger-menu">
+            <button id="hamburger-btn">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div id="hamberger-nav">
+                <button id="hamburger-btn-close"><img src="./images/close.svg" alt="close.svg"></button>
+                <ul class="link">
+                    <a href="index.html">
+                        <li class="link-item">
+                            首頁
+                        </li>
+                    </a>
+                    <a href="search.html">
+                        <li class="link-item">
+                            搜尋
+                        </li>
+                    </a>
+                    <a href="ranking.html">
+                        <li class="link-item">
+                            排行
+                        </li>
+                    </a>
+                </ul>
+            </div>
+        </div>
+    </header>
+    <button id="back-to-top" onclick="scrollToTop()"><img src="./images/toTop.png" alt="toTop"></button>
+
+    <main>
+        <div class="container">
+            <script src="https://www.youtube.com/iframe_api"></script>
+            <script src="./js/lyrics_insert.js"></script>
+            <div class="song-info-box">
+                <div class="song-img-box"><img id="song-img" alt="歌曲封面" /></div>
+                <div class="song-info">
+                    <div id="title-scroll">
+                        <h1 id="song-title"></h1>
+                    </div>
+                    <h2 id="song-artist"></h2>
+                    <div class="album"><img src="./images/album.svg" alt="album_icon">
+                        <h3 id="album"></h3>
+                    </div>
+                    <div class="release-date"><img src="./images/calendar.svg" alt="release_date_icon">
+                        <h3 id="release-date"></h3>
+                    </div>
+                </div>
+                <div id="heart"><span class="hover-text">加入喜歡</span></div>
+                <script type="module">
+                    import { auth, firestore } from './js/firebase-init.js';
+                    import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js';
+                    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js';
+            
+                    // 提取 URL 中的查詢參數
+                    function getQueryParam(param) {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        return urlParams.get(param);
+                    }
+            
+                    // 獲取歌曲 ID
+                    const songId = getQueryParam('songId');
+                    if (!songId) {
+                        alert("未找到歌曲 ID！");
+                        throw new Error("歌曲 ID 缺失！");
+                    }
+                    console.log("歌曲 ID:", songId);
+            
+                    // 綁定按鈕
+                    const likeButton = document.getElementById('heart');
+                    const hoverText = likeButton.querySelector('.hover-text');
+            
+                    let userId = null; // 用來存儲當前登入用戶的 ID
+            
+                    // 更新按鈕狀態
+                    async function updateButtonState() {
+                        if (!userId) return;
+            
+                        const userDocRef = doc(firestore, 'users', userId);
+                        const userDoc = await getDoc(userDocRef);
+            
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            const likedSongs = userData.liked || [];
+                            if(likedSongs.includes(songId)){
+                                likeButton.classList.add('liked');
+                                hoverText.textContent = "移出喜歡";
+                            }else{
+                                likeButton.classList.remove('liked');
+                                hoverText.textContent = "加入喜歡";
+                            }
+                        }
+                    }
+            
+                    // 按鈕點擊事件：加入或移出喜歡
+                    async function toggleLikeStatus() {
+                        if (!userId) {
+                            alert("請先登入！");
+                            return;
+                        }
+            
+                        const userDocRef = doc(firestore, 'users', userId);
+                        const userDoc = await getDoc(userDocRef);
+            
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            const likedSongs = userData.liked || [];
+            
+                            if (likedSongs.includes(songId)) {
+                                // 如果已經喜歡，則移出
+                                await updateDoc(userDocRef, {
+                                    liked: arrayRemove(songId),
+                                });
+                            } else {
+                                // 如果尚未喜歡，則加入
+                                await updateDoc(userDocRef, {
+                                    liked: arrayUnion(songId),
+                                });
+                            }
+            
+                            // 更新按鈕狀態
+                            updateButtonState();
+                        } else {
+                            console.error("用戶資料不存在！");
+                        }
+                    }
+            
+                    // 監聽用戶登入狀態
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            userId = user.uid; // 獲取用戶 ID
+                            updateButtonState(); // 更新按鈕狀態
+                        } else {
+                            userId = null;
+                            hoverText.textContent = 加入喜歡;
+                        }
+                    });
+            
+                    // 綁定按鈕事件
+                    likeButton.addEventListener('click', toggleLikeStatus);
+                </script>
+            </div>
+            <div id="main">
+                <div class="box-left">
+                    <div class="iframe_player">
+                        <div id="video-container"></div>
+                    </div>
+
+                </div>
+                <div class="box-right">
+                    <div class="scroll-box">
+                        <div id="lyric-container"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="related-songs">
+                <h3 class="related-title">相同藝人的歌曲</h3>
+                <aside>
+                    <div class="scroll-box">
+                        <div id="related-songs-container" class="card-container">
+                            <!-- 卡片內容將動態生成 -->
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <div class="footer-box">
+            <a href="index.html"><img src="./images/logo.png" alt=""></a>
+            <p>© 2024 よいせい. All rights reserved.</p>
+            <p>聯繫我們：s111219028@stu.ntue.edu.tw</p>
+            <p>歌詞版權歸歌曲創作者及其相關公司所有。</p>
+        </div>
+
+    </footer>
+    <script src="./js/to_top.js"></script>
+    <script src="./js/title_scroll.js"></script>
+    <script type="module">
+        import { auth, firestore } from './js/firebase-init.js';
+    </script>
+</body>
+
+</html>
